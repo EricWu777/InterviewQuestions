@@ -7,7 +7,6 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-
 def get_last_page_num(url):
     page = requests.get(url)
     soup = BeautifulSoup(page.text, 'lxml') 
@@ -59,10 +58,8 @@ def get_year(new_filename):
         file_year = new_filename[:2]
         return file_year
   
-def get_subject(title, new_filename):
-    path = os.getcwd() 
-    with open( path + '/resource/subject.json') as f:
-        sub = json.load(f)
+def get_subject(sub, title, new_filename):
+
     sub_keys = list(sub.keys())
     sub_values = list(sub.values())
     
@@ -79,10 +76,7 @@ def get_subject(title, new_filename):
                 return subject
     return subject
 
-def get_subject_bylist():
-    path = os.getcwd() 
-    with open( path + '/resource/subject.json') as f:
-        sub = json.load(f)
+def get_subject_by_list(sub):
     sub_keys = list(sub.keys())
     subj_list = sub_keys[:-1]
     return subj_list
@@ -126,7 +120,7 @@ def download_pdf(file_url, file_path, file_name):
 
 def copy_file():
 
-    subject_list =get_subject_bylist()
+    subject_list =get_subject_by_list(sub)
     ans_path = os.getcwd() + os.sep + 'ans'
     filelist = os.listdir(ans_path)
     for i in range(0, len(filelist)):
@@ -136,28 +130,27 @@ def copy_file():
                     dest_path = get_path(str(y), subject_list[j])
                     copyname_path = os.getcwd() + os.sep + 'ans' + os.sep + filelist[i]
                     shutil.copy(copyname_path, dest_path)
-
-#subject_list就可以直接從字典取出
-subject_list = get_subject_bylist()
-# 判斷（取得學年度、學科科目（包含例外與答案）（7類）)
-#create folder（若條件沒有符合的資料夾，則建立一個folder)(若條件有符合資料夾，則放入)
-# get pdf_dir
-# get file_url
-# download_pdf(file_url, pdf_dir)
-
 #開始測量時間點
 start = time.time()
 
+path = os.getcwd() 
+#讀取json檔案
+with open( path + '/resource/subject.json', encoding='utf-8') as f:
+    sub = json.load(f)
+    
+#取得所有科目
+subject_list = get_subject_by_list(sub)
+    
 #先建立一個放入ans的folder
 create_folder_by_ans()
 #建立一個放入例外處理的folder(subject是'')
 create_folder_by_exception()
 url = 'https://www.ceec.edu.tw/xmfile?xsmsid=0J052424829869345634'
 
+#取得最後一頁的頁碼
 page_last_num = get_last_page_num(url)
 
-page = requests.get(url)
-
+#取得所有頁數的url，做成一個list
 url_list = get_page_url_list(url)
 
 threads =[]
@@ -172,14 +165,11 @@ for url in url_list:
         
         title=t['title']
         href =t['href']
-
         new_filename = get_new_file_name(title)
-        print("New_filename:::::", new_filename)
-
         file_url = get_file_url(href)
         file_year = get_year(new_filename)
-        file_subject = get_subject(title, new_filename)
-        #這邊的數字可以用command line arguments的方法
+        file_subject = get_subject(sub, title, new_filename)
+
         if int(file_year) >=110 or int(file_year)<83 :
             next       
         else:
@@ -191,10 +181,11 @@ for url in url_list:
                         threads.append(threading.Thread(target=download_pdf, args=(file_url, file_path, new_filename) ))
                         threads[thread_num].start()
                         break
+                    #若出現ConnectionError，則重新下載，若重複三次則取得error_msg
                     except ConnectionError:
                         if retries < 3:
                             retries+=1
-                        else:
+                        else: 
                             error_msg = ConnectionError.args[0]
                             error_record[title]= error_msg
 
@@ -214,7 +205,6 @@ for url in url_list:
                             error_msg = ConnectionError.args[0]
                             error_record[title]= error_msg
 
-
             elif file_subject == '答案' :
 
                 file_path = os.getcwd() + os.sep + 'ans'
@@ -229,12 +219,13 @@ for url in url_list:
                         else:
                             error_msg = ConnectionError.args[0]
                             error_record[title]= error_msg
+
             time.sleep(0.1)
             thread_num +=1
     
 for td in threads:
     print(td)
-    td.join()
+    td.join() 
 
 print('Error_record:',error_record)
 

@@ -14,13 +14,9 @@ def get_data_by_configparser():
     path =os.getcwd() 
     new_path = path + '/user.cfg'
     config.read(new_path)
-    host= config.get('User', 'host')
-    port = int(config['User']['port'])
-    user = config['User']['user']
-    password = config['User']['password']
-    db = config['User']['db']
-    data_list =[host, port, user, password, db]
-    return data_list
+    mysql_config = config['mysql']
+    
+    return  mysql_config
 
 driverPath = '/Users/ericwu/Downloads/chromedriver 2'
 driver = webdriver.Chrome(driverPath)
@@ -79,22 +75,25 @@ print(df_data)
 df_data.to_csv('./台北轉運站至朝馬轉運站的路線.csv')
 
 
-connection_list = get_data_by_configparser()
+mysql_config = get_data_by_configparser()
 
-connection = pymysql.connect(host=connection_list[0], port=connection_list[1]
-                ,user=connection_list[2], password=connection_list[3], db=connection_list[4])
-    
+connection = pymysql.connect(
+    host= mysql_config['host'], port = int(mysql_config['port']), 
+user = mysql_config['user'], password = mysql_config['password'],db = mysql_config['db']
+
+)
+        
     
 try:
     cursor = connection.cursor()
     #匯入資料
-    sql_ins = 'INSERT INTO route_line (route, description) VALUES (%s, %s)'
+    # sql_ins = 'INSERT INTO route_line (route, description) VALUES (%s, %s)'
     
-    for i in range(0,10):
-        cursor.execute(sql_ins,(result['route'][i] , result['description'][i]))
+    # for i in range(0,10):
+    #     cursor.execute(sql_ins,(result['route'][i] , result['description'][i]))
     
-    #確定存入SQL
-    connection.commit()
+    # #確定存入SQL
+    # connection.commit()
 
     #統計route欄位有出現埔里的筆數
     sql_sel = '''SELECT COUNT(route) FROM route_line WHERE route LIKE '%埔里%' '''
